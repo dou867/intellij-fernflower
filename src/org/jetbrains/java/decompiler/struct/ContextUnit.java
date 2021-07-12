@@ -83,6 +83,10 @@ public class ContextUnit {
   }
 
   public void save() {
+    final List<Future<?>> futures = new LinkedList<>();
+    final ExecutorService decompileExecutor = Executors.newFixedThreadPool(Integer.parseInt((String) DecompilerContext.getProperty(IFernflowerPreferences.THREADS)));
+    final DecompilerContext rootContext = DecompilerContext.getCurrentContext();
+
     switch (type) {
       case TYPE_FOLDER:
         // create folder
@@ -101,14 +105,27 @@ public class ContextUnit {
           }
           String entryName = decompiledData.getClassEntryName(cl, classEntries.get(i));
           if (entryName != null) {
-            String content = decompiledData.getClassContent(cl);
-            if (content != null) {
-              int[] mapping = null;
-              if (DecompilerContext.getOption(IFernflowerPreferences.BYTECODE_SOURCE_MAPPING)) {
-                mapping = DecompilerContext.getBytecodeSourceMapper().getOriginalLinesMapping();
+            futures.add(decompileExecutor.submit(() -> {
+              setContext(rootContext);
+              String content = decompiledData.getClassContent(cl);
+              if (content != null) {
+                int[] mapping = null;
+                if (DecompilerContext.getOption(IFernflowerPreferences.BYTECODE_SOURCE_MAPPING)) {
+                  mapping = DecompilerContext.getBytecodeSourceMapper().getOriginalLinesMapping();
+                }
+                  resultSaver.saveClassFile(filename, cl.qualifiedName, entryName, content, mapping);
               }
-              resultSaver.saveClassFile(filename, cl.qualifiedName, entryName, content, mapping);
-            }
+            }));
+          }
+        }
+
+        decompileExecutor.shutdown();
+
+        for (Future<?> future : futures) {
+          try {
+            future.get();
+          } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
           }
         }
 
@@ -131,10 +148,6 @@ public class ContextUnit {
             resultSaver.copyEntry(pair[0], archivePath, filename, pair[1]);
           }
         }
-
-        final List<Future<?>> futures = new LinkedList<>();
-        final ExecutorService decompileExecutor = Executors.newFixedThreadPool(Integer.parseInt((String) DecompilerContext.getProperty(IFernflowerPreferences.THREADS)));
-        final DecompilerContext rootContext = DecompilerContext.getCurrentContext();
 
         // classes
         for (int i = 0; i < classes.size(); i++) {
