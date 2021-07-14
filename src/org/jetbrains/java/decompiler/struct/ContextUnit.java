@@ -82,11 +82,8 @@ public class ContextUnit {
     classes = lstClasses;
   }
 
-  public void save() {
-    final List<Future<?>> futures = new LinkedList<>();
-    final ExecutorService decompileExecutor = Executors.newFixedThreadPool(Integer.parseInt((String) DecompilerContext.getProperty(IFernflowerPreferences.THREADS)));
+  public void save(ExecutorService decompileExecutor) {
     final DecompilerContext rootContext = DecompilerContext.getCurrentContext();
-
     switch (type) {
       case TYPE_FOLDER:
         // create folder
@@ -105,7 +102,7 @@ public class ContextUnit {
           }
           String entryName = decompiledData.getClassEntryName(cl, classEntries.get(i));
           if (entryName != null) {
-            futures.add(decompileExecutor.submit(() -> {
+            decompileExecutor.submit(() -> {
               setContext(rootContext);
               String content = decompiledData.getClassContent(cl);
               if (content != null) {
@@ -115,20 +112,9 @@ public class ContextUnit {
                 }
                   resultSaver.saveClassFile(filename, cl.qualifiedName, entryName, content, mapping);
               }
-            }));
+            });
           }
         }
-
-        decompileExecutor.shutdown();
-
-        for (Future<?> future : futures) {
-          try {
-            future.get();
-          } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException(e);
-          }
-        }
-
         break;
 
       case TYPE_JAR:
@@ -154,7 +140,7 @@ public class ContextUnit {
           StructClass cl = classes.get(i);
           String entryName = decompiledData.getClassEntryName(cl, classEntries.get(i));
           if (entryName != null) {
-            futures.add(decompileExecutor.submit(() -> {
+            decompileExecutor.submit(() -> {
               setContext(rootContext);
               String content = decompiledData.getClassContent(cl);
               int[] mapping = null;
@@ -166,20 +152,9 @@ public class ContextUnit {
               } else {
                 resultSaver.saveClassEntry(archivePath, filename, cl.qualifiedName, entryName, content);
               }
-            }));
+            });
           }
         }
-
-        decompileExecutor.shutdown();
-
-        for (Future<?> future : futures) {
-          try {
-            future.get();
-          } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException(e);
-          }
-        }
-
         resultSaver.closeArchive(archivePath, filename);
     }
   }
