@@ -110,7 +110,7 @@ public class ContextUnit {
                 if (DecompilerContext.getOption(IFernflowerPreferences.BYTECODE_SOURCE_MAPPING)) {
                   mapping = DecompilerContext.getBytecodeSourceMapper().getOriginalLinesMapping();
                 }
-                  resultSaver.saveClassFile(filename, cl.qualifiedName, entryName, content, mapping);
+                resultSaver.saveClassFile(filename, cl.qualifiedName, entryName, content, mapping);
               }
             });
           }
@@ -155,7 +155,12 @@ public class ContextUnit {
             });
           }
         }
-        resultSaver.closeArchive(archivePath, filename);
+    }
+  }
+
+  public void close() {
+    if (type == TYPE_ZIP || type == TYPE_JAR) {
+      resultSaver.closeArchive(archivePath, filename);
     }
   }
 

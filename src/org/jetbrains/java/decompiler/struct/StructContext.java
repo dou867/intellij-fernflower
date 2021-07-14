@@ -10,10 +10,11 @@ import org.jetbrains.java.decompiler.util.InterpreterUtil;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.jar.JarFile;
 import java.util.zip.ZipEntry;
@@ -55,8 +56,7 @@ public class StructContext {
   }
 
   public void saveContext() {
-    int nthreads = Integer.parseInt((String) DecompilerContext.getProperty(IFernflowerPreferences.THREADS));
-    final ExecutorService decompileExecutor = Executors.newFixedThreadPool(nthreads);
+    final ExecutorService decompileExecutor = Executors.newFixedThreadPool(Integer.parseInt((String) DecompilerContext.getProperty(IFernflowerPreferences.THREADS)));
     for (ContextUnit unit : units.values()) {
       if (unit.isOwn()) {
         unit.save(decompileExecutor);
@@ -67,6 +67,11 @@ public class StructContext {
       decompileExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.DAYS);
     } catch (InterruptedException e) {
       decompileExecutor.shutdownNow();
+    }
+    for (ContextUnit unit : units.values()) {
+      if (unit.isOwn()) {
+        unit.close();
+      }
     }
   }
 
